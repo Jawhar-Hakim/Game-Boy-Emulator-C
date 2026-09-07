@@ -50,6 +50,14 @@ void set_bc(struct CPU *cpu, uint16_t value)
     cpu->C = value;
 }
 
+void ld_bc_nn(struct CPU *cpu, uint8_t memory[])
+{
+    uint8_t low = fetch(cpu, memory);
+    uint8_t high = fetch(cpu, memory);
+
+    set_bc(cpu, ((uint16_t)high << 8) | low);
+}
+
 int main(void)
 {
     struct CPU cpu;
@@ -59,28 +67,28 @@ int main(void)
     cpu.A = 42;
     cpu.PC = 0x0150;
     uint8_t program[] = {
-        0x3E, 0x42,
-        0x3C,
-        0x06, 0x99
+        0x01, 0x34, 0x12,  // LD BC, 0x1234
+        0x3E, 0x42,        // LD A, 0x42
+        0x3C               // INC A
     };
-
 
     for (int i = 0; i < sizeof(program); i++)
     {
         memory[0x0150 + i] = program[i];
     }
 
-
-
     printf("PC     = 0x%04X\n", cpu.PC);
 
-
-    while(cpu.PC!=0x0155){
+    while(cpu.PC!=0x0156){
          uint8_t opcode = fetch(&cpu, memory);
          printf("Opcode = 0x%02X\n", opcode);
          switch (opcode)
         {
             case 0x00:
+                break;
+
+            case 0x01:
+                ld_bc_nn(&cpu,memory); //incompatible type
                 break;
 
             case 0x3E:
@@ -94,11 +102,6 @@ int main(void)
                 printf("A      = 0x%02X\n", cpu.A);
                 printf("PC     = 0x%04X\n", cpu.PC);
                 break;
-            case 0x06:
-                ld_b_n(&cpu,memory);
-                printf("B      = 0x%02X\n", cpu.B);
-                printf("PC     = 0x%04X\n", cpu.PC);
-                break;
             default:
                 printf("Unknown opcode: 0x%02X\n", opcode);
                 break;
@@ -107,9 +110,8 @@ int main(void)
     printf("-----------------\n");
     printf("A      = 0x%02X\n", cpu.A);
     printf("B      = 0x%02X\n", cpu.B);
+    printf("BC     = 0x%04X\n", get_bc(&cpu)); //incompatible type
     printf("PC     = 0x%04X\n", cpu.PC);
-
-
 
     return 0;
 }
