@@ -102,7 +102,116 @@ void jr_z_r8(struct CPU *cpu, uint8_t memory[])
     if(cpu->F & 0x80){
         cpu->PC += offset;
     }
+}
 
+void jr_nz_r8(struct CPU *cpu, uint8_t memory[])
+{
+    int8_t offset = (int8_t) (fetch(cpu,memory));
+    if(!(cpu->F & 0x80)){
+        cpu->PC += offset;
+    }
+}
+
+void jr_c_r8(struct CPU *cpu, uint8_t memory[])
+{
+    int8_t offset = (int8_t) (fetch(cpu,memory));
+    if(cpu->F & 0x10){
+        cpu->PC += offset;
+    }
+}
+
+void jr_nc_r8(struct CPU *cpu, uint8_t memory[])
+{
+    int8_t offset = (int8_t) (fetch(cpu,memory));
+    if(!(cpu->F & 0x10)){
+        cpu->PC += offset;
+    }
+}
+
+void jp_a16(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t address = (fetch(cpu,memory)) | (fetch(cpu,memory) << 8);
+    cpu->PC = address;
+}
+
+void jp_nz_a16(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t address = (fetch(cpu,memory)) | (fetch(cpu,memory) << 8);
+    if(!(cpu->F & 0x80)){
+        cpu->PC = address;
+    }
+}
+
+void jp_z_a16(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t address = (fetch(cpu,memory)) | (fetch(cpu,memory) << 8);
+    if((cpu->F & 0x80)){
+        cpu->PC = address;
+    }
+}
+
+void jp_c_a16(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t address = (fetch(cpu,memory)) | (fetch(cpu,memory) << 8);
+    if((cpu->F & 0x10)){
+        cpu->PC = address;
+    }
+}
+
+void jp_nc_a16(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t address = (fetch(cpu,memory)) | (fetch(cpu,memory) << 8);
+    if(!(cpu->F & 0x10)){
+        cpu->PC = address;
+    }
+}
+
+void push_bc(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t value = get_bc(cpu);
+    cpu->SP--;
+    memory[cpu->SP] = value >> 8;
+    cpu->SP--;
+    memory[cpu->SP] = value & 0x00FF;
+}
+
+void pop_bc(struct CPU *cpu, uint8_t memory[])
+{
+    cpu->C = memory[cpu->SP];
+    cpu->SP++;
+    cpu->B = memory[cpu->SP];
+    cpu->SP++;
+}
+void push_de(struct CPU *cpu, uint8_t memory[])
+{
+    cpu->SP--;
+    memory[cpu->SP] = cpu->D;
+    cpu->SP--;
+    memory[cpu->SP] = cpu->E;
+}
+
+void pop_de(struct CPU *cpu, uint8_t memory[])
+{
+    cpu->E = memory[cpu->SP];
+    cpu->SP++;
+    cpu->D = memory[cpu->SP];
+    cpu->SP++;
+}
+
+void push_hl(struct CPU *cpu, uint8_t memory[])
+{
+    cpu->SP--;
+    memory[cpu->SP] = cpu->H;
+    cpu->SP--;
+    memory[cpu->SP] = cpu->L;
+}
+
+void pop_hl(struct CPU *cpu, uint8_t memory[])
+{
+    cpu->L = memory[cpu->SP];
+    cpu->SP++;
+    cpu->H = memory[cpu->SP];
+    cpu->SP++;
 }
 
 int main(void)
@@ -113,13 +222,21 @@ int main(void)
 
     cpu.A = 42;
     cpu.PC = 0x0150;
+    cpu.SP = 0xFFFE;
     uint8_t program[] = {
         0x01, 0x34, 0x12,  // LD BC, 0x1234
         0x3E, 0x42,        // LD A, 0x42
         //0x3C,              // INC A
-        0xFE, 0x42,        // CP A, n
-        0x28, 0x02,        // JR Z, r8
-        0x06, 0x99         //LD B, n
+        0xFE, 0x99,        // CP A, n
+        //0x28, 0x02,        // JR Z, r8
+        0x20, 0x02,         //JR NZ, r8
+        0x06, 0x77,        //LD B, n
+        0xC5,              // push bc
+        0xC1,              // pop bc
+        0xD5,              // push de
+        0xD1,              // pop de
+        0xE5,              // push hl
+        0xE1,              // pop hl
     };
 
     for (int i = 0; i < sizeof(program); i++)
@@ -129,7 +246,7 @@ int main(void)
 
     printf("PC     = 0x%04X\n", cpu.PC);
 
-    while(cpu.PC!=0x0160){
+    while(cpu.PC < 0x0150 + sizeof(program)){
          uint8_t opcode = fetch(&cpu, memory);
          printf("Opcode = 0x%02X\n", opcode);
          switch (opcode)
@@ -163,6 +280,27 @@ int main(void)
                 break;
             case 0x06:
                 ld_b_n(&cpu,memory);
+                break;
+            case 0x20:
+                jr_nz_r8(&cpu, memory);
+                break;
+            case 0xC5:
+                push_bc(&cpu,memory);
+                break;
+            case 0xC1:
+                pop_bc(&cpu,memory);
+                break;
+            case 0xD5:
+                push_de(&cpu,memory);
+                break;
+            case 0xD1:
+                pop_de(&cpu,memory);
+                break;
+            case 0xE5:
+                push_hl(&cpu,memory);
+                break;
+            case 0xE1:
+                pop_hl(&cpu,memory);
                 break;
             default:
                 printf("Unknown opcode: 0x%02X\n", opcode);
