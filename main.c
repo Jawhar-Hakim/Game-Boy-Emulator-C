@@ -214,6 +214,66 @@ void pop_hl(struct CPU *cpu, uint8_t memory[])
     cpu->SP++;
 }
 
+void push_af(struct CPU *cpu, uint8_t memory[])
+{
+    cpu->SP--;
+    memory[cpu->SP] = cpu->A;
+    cpu->SP--;
+    memory[cpu->SP] = cpu->F;
+}
+
+void pop_af(struct CPU *cpu, uint8_t memory[])
+{
+    cpu->F = memory[cpu->SP] & 0xF0;
+    cpu->SP++;
+    cpu->A = memory[cpu->SP];
+    cpu->SP++;
+}
+
+void push_16(struct CPU *cpu, uint8_t memory[], uint16_t value)
+{
+    cpu->SP--;
+    memory[cpu->SP] = value >> 8;
+    cpu->SP--;
+    memory[cpu->SP] = value;
+}
+
+uint16_t pop_16(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t value = memory[cpu->SP];
+    cpu->SP++;
+    value |= (memory[cpu->SP] << 8);
+    cpu->SP++;
+    return value;
+}
+
+void call_a16(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t value = fetch(cpu,memory);
+    value |= fetch(cpu,memory) << 8;
+    push_16(cpu, memory, cpu->PC);
+    cpu->PC = value;
+}
+
+void ret(struct CPU *cpu, uint8_t memory[])
+{
+    cpu->PC = pop_16(cpu,memory);
+}
+
+void inc_bc(struct CPU *cpu)
+{
+    uint16_t bc = get_bc(cpu);
+    bc++;
+    set_bc(cpu, bc);
+}
+
+void dec_bc(struct CPU *cpu)
+{
+    uint16_t bc = get_bc(cpu);
+    bc--;
+    set_bc(cpu, bc);
+}
+
 int main(void)
 {
     struct CPU cpu = {0};
@@ -237,6 +297,8 @@ int main(void)
         0xD1,              // pop de
         0xE5,              // push hl
         0xE1,              // pop hl
+        0xF5,              // push af
+        0xF1               // pop af
     };
 
     for (int i = 0; i < sizeof(program); i++)
@@ -301,6 +363,12 @@ int main(void)
                 break;
             case 0xE1:
                 pop_hl(&cpu,memory);
+                break;
+            case 0xF5:
+                push_af(&cpu,memory);
+                break;
+            case 0xF1:
+                pop_af(&cpu,memory);
                 break;
             default:
                 printf("Unknown opcode: 0x%02X\n", opcode);
