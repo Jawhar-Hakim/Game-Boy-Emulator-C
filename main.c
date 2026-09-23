@@ -298,7 +298,10 @@ int main(void)
         0xE5,              // push hl
         0xE1,              // pop hl
         0xF5,              // push af
-        0xF1               // pop af
+        0xF1,              // pop af
+        0x03,              // inc bc
+        0x0B,              // dec bc
+
     };
 
     for (int i = 0; i < sizeof(program); i++)
@@ -369,6 +372,12 @@ int main(void)
                 break;
             case 0xF1:
                 pop_af(&cpu,memory);
+                break;
+            case 0x03:
+                inc_bc(&cpu);
+                break;
+            case 0x0B:
+                dec_bc(&cpu);
                 break;
             default:
                 printf("Unknown opcode: 0x%02X\n", opcode);
