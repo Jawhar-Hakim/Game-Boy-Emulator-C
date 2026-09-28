@@ -161,6 +161,25 @@ void ld_bc_nn(struct CPU *cpu, uint8_t memory[])
     set_bc(cpu, ((uint16_t)high << 8) | low);
 }
 
+void ld_de_nn(struct CPU *cpu, uint8_t memory[])
+{
+    cpu->E = fetch(cpu,memory);
+    cpu->D = fetch(cpu,memory);
+}
+
+void ld_hl_nn(struct CPU *cpu, uint8_t memory[])
+{
+    cpu->L = fetch(cpu,memory);
+    cpu->H = fetch(cpu,memory);
+}
+
+void ld_sp_nn(struct CPU *cpu, uint8_t memory[])
+{
+    uint8_t low = fetch(cpu,memory);
+    uint8_t high = fetch(cpu,memory);
+    cpu->SP = ((uint16_t)high << 8) | low;
+}
+
 //====================
 //8-BIT ARITHMATIC
 //====================
@@ -431,8 +450,8 @@ int main(void)
         uint8_t opcode = fetch(&cpu, memory);
         printf("Opcode = 0x%02X\n", opcode);
         //====================
-//DECODER
-//====================
+        //DECODER
+        //====================
         switch (opcode)
         {
         case 0x00:
@@ -440,6 +459,18 @@ int main(void)
 
         case 0x01:
             ld_bc_nn(&cpu,memory);
+            break;
+
+        case 0x11:
+            ld_de_nn(&cpu,memory);
+            break;
+
+        case 0x21:
+            ld_hl_nn(&cpu,memory);
+            break;
+
+        case 0x31:
+            ld_sp_nn(&cpu,memory);
             break;
 
         case 0x3E:
