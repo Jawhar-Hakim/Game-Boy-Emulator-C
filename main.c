@@ -1,6 +1,21 @@
+//====================
+//IMPORTS
+//====================
 #include <stdio.h>
 #include <stdint.h>
 
+//====================
+//DEFINES
+//====================
+#define FLAG_Z 0x80
+#define FLAG_N 0x40
+#define FLAG_H 0x20
+#define FLAG_C 0x10
+#define FLAG_MASK 0xF0
+
+//====================
+//CPU
+//====================
 struct CPU
 {
     uint8_t A;
@@ -17,41 +32,14 @@ struct CPU
     uint16_t SP;
 };
 
+//====================
+//HELPERS
+//====================
 uint8_t fetch(struct CPU *cpu, uint8_t memory[])
 {
     uint8_t value = memory[cpu->PC];
     cpu->PC++;
     return value;
-}
-
-void ld_a_n(struct CPU *cpu, uint8_t memory[])
-{
-    cpu->A = fetch(cpu, memory);
-}
-
-void ld_b_n(struct CPU *cpu, uint8_t memory[])
-{
-    cpu->B = fetch(cpu,memory);
-}
-
-void inc_a(struct CPU *cpu)
-{
-    uint8_t old_a = cpu->A;
-    cpu->A++;
-    // z flag
-    if(cpu->A == 0x00){
-        cpu->F |= 0x80;
-    } else{
-        cpu->F &= ~0x80; //same as cpu->F |= 0x70
-    }
-    // h flag
-    if ((old_a & 0x0F) == 0x0F){
-        cpu->F |= 0x20;
-    } else {
-        cpu->F &= ~0x20;
-    }
-    //n flag
-    cpu->F &= ~0x40;
 }
 
 uint16_t get_bc(struct CPU *cpu)
@@ -65,106 +53,9 @@ void set_bc(struct CPU *cpu, uint16_t value)
     cpu->C = value;
 }
 
-void ld_bc_nn(struct CPU *cpu, uint8_t memory[])
-{
-    uint8_t low = fetch(cpu, memory);
-    uint8_t high = fetch(cpu, memory);
-
-    set_bc(cpu, ((uint16_t)high << 8) | low);
-}
-
-void cp_a_n(struct CPU *cpu, uint8_t memory[])
-{
-    uint8_t n = fetch(cpu, memory);
-    uint8_t lower_a = cpu->A & 0x0F;
-    uint8_t lower_n = n & 0x0F;
-    if (cpu->A == n){
-        cpu->F |= 0x80;
-    } else {
-        cpu->F &= ~0x80;
-    }
-    cpu->F |= 0x40;
-    if(lower_a<lower_n){
-        cpu->F |= 0x20;
-    } else {
-        cpu->F &= ~0x20;
-    }
-    if(cpu->A<n){
-        cpu->F |= 0x10;
-    } else {
-        cpu->F &= ~0x10;
-    }
-}
-
-void jr_z_r8(struct CPU *cpu, uint8_t memory[])
-{
-    int8_t offset = (int8_t) (fetch(cpu,memory));
-    if(cpu->F & 0x80){
-        cpu->PC += offset;
-    }
-}
-
-void jr_nz_r8(struct CPU *cpu, uint8_t memory[])
-{
-    int8_t offset = (int8_t) (fetch(cpu,memory));
-    if(!(cpu->F & 0x80)){
-        cpu->PC += offset;
-    }
-}
-
-void jr_c_r8(struct CPU *cpu, uint8_t memory[])
-{
-    int8_t offset = (int8_t) (fetch(cpu,memory));
-    if(cpu->F & 0x10){
-        cpu->PC += offset;
-    }
-}
-
-void jr_nc_r8(struct CPU *cpu, uint8_t memory[])
-{
-    int8_t offset = (int8_t) (fetch(cpu,memory));
-    if(!(cpu->F & 0x10)){
-        cpu->PC += offset;
-    }
-}
-
-void jp_a16(struct CPU *cpu, uint8_t memory[])
-{
-    uint16_t address = (fetch(cpu,memory)) | (fetch(cpu,memory) << 8);
-    cpu->PC = address;
-}
-
-void jp_nz_a16(struct CPU *cpu, uint8_t memory[])
-{
-    uint16_t address = (fetch(cpu,memory)) | (fetch(cpu,memory) << 8);
-    if(!(cpu->F & 0x80)){
-        cpu->PC = address;
-    }
-}
-
-void jp_z_a16(struct CPU *cpu, uint8_t memory[])
-{
-    uint16_t address = (fetch(cpu,memory)) | (fetch(cpu,memory) << 8);
-    if((cpu->F & 0x80)){
-        cpu->PC = address;
-    }
-}
-
-void jp_c_a16(struct CPU *cpu, uint8_t memory[])
-{
-    uint16_t address = (fetch(cpu,memory)) | (fetch(cpu,memory) << 8);
-    if((cpu->F & 0x10)){
-        cpu->PC = address;
-    }
-}
-
-void jp_nc_a16(struct CPU *cpu, uint8_t memory[])
-{
-    uint16_t address = (fetch(cpu,memory)) | (fetch(cpu,memory) << 8);
-    if(!(cpu->F & 0x10)){
-        cpu->PC = address;
-    }
-}
+//====================
+//STACK
+//====================
 
 void push_bc(struct CPU *cpu, uint8_t memory[])
 {
@@ -182,6 +73,7 @@ void pop_bc(struct CPU *cpu, uint8_t memory[])
     cpu->B = memory[cpu->SP];
     cpu->SP++;
 }
+
 void push_de(struct CPU *cpu, uint8_t memory[])
 {
     cpu->SP--;
@@ -247,6 +139,173 @@ uint16_t pop_16(struct CPU *cpu, uint8_t memory[])
     return value;
 }
 
+//====================
+//LOADS
+//====================
+
+void ld_a_n(struct CPU *cpu, uint8_t memory[])
+{
+    cpu->A = fetch(cpu, memory);
+}
+
+void ld_b_n(struct CPU *cpu, uint8_t memory[])
+{
+    cpu->B = fetch(cpu,memory);
+}
+
+void ld_bc_nn(struct CPU *cpu, uint8_t memory[])
+{
+    uint8_t low = fetch(cpu, memory);
+    uint8_t high = fetch(cpu, memory);
+
+    set_bc(cpu, ((uint16_t)high << 8) | low);
+}
+
+//====================
+//8-BIT ARITHMATIC
+//====================
+void inc_a(struct CPU *cpu)
+{
+    uint8_t old_a = cpu->A;
+    cpu->A++;
+    // z flag
+    if(cpu->A == 0x00)
+    {
+        cpu->F |= FLAG_Z;
+    }
+    else
+    {
+        cpu->F &= ~FLAG_Z; //same as cpu->F |= 0x70
+    }
+    // h flag
+    if ((old_a & 0x0F) == 0x0F)
+    {
+        cpu->F |= FLAG_H;
+    }
+    else
+    {
+        cpu->F &= ~FLAG_H;
+    }
+    //n flag
+    cpu->F &= ~FLAG_N;
+}
+
+void cp_a_n(struct CPU *cpu, uint8_t memory[])
+{
+    uint8_t n = fetch(cpu, memory);
+    uint8_t lower_a = cpu->A & 0x0F;
+    uint8_t lower_n = n & 0x0F;
+    if (cpu->A == n)
+    {
+        cpu->F |= FLAG_Z;
+    }
+    else
+    {
+        cpu->F &= ~FLAG_Z;
+    }
+    cpu->F |= FLAG_N;
+    if(lower_a<lower_n)
+    {
+        cpu->F |= FLAG_H;
+    }
+    else
+    {
+        cpu->F &= ~FLAG_H;
+    }
+    if(cpu->A<n)
+    {
+        cpu->F |= FLAG_C;
+    }
+    else
+    {
+        cpu->F &= ~FLAG_C;
+    }
+}
+
+//====================
+//JUMPS
+//====================
+void jr_z_r8(struct CPU *cpu, uint8_t memory[])
+{
+    int8_t offset = (int8_t) (fetch(cpu,memory));
+    if(cpu->F & FLAG_Z)
+    {
+        cpu->PC += offset;
+    }
+}
+
+void jr_nz_r8(struct CPU *cpu, uint8_t memory[])
+{
+    int8_t offset = (int8_t) (fetch(cpu,memory));
+    if(!(cpu->F & FLAG_Z))
+    {
+        cpu->PC += offset;
+    }
+}
+
+void jr_c_r8(struct CPU *cpu, uint8_t memory[])
+{
+    int8_t offset = (int8_t) (fetch(cpu,memory));
+    if(cpu->F & FLAG_C)
+    {
+        cpu->PC += offset;
+    }
+}
+
+void jr_nc_r8(struct CPU *cpu, uint8_t memory[])
+{
+    int8_t offset = (int8_t) (fetch(cpu,memory));
+    if(!(cpu->F & FLAG_C))
+    {
+        cpu->PC += offset;
+    }
+}
+
+void jp_a16(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t address = (fetch(cpu,memory)) | (fetch(cpu,memory) << 8);
+    cpu->PC = address;
+}
+
+void jp_nz_a16(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t address = (fetch(cpu,memory)) | (fetch(cpu,memory) << 8);
+    if(!(cpu->F & FLAG_Z))
+    {
+        cpu->PC = address;
+    }
+}
+
+void jp_z_a16(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t address = (fetch(cpu,memory)) | (fetch(cpu,memory) << 8);
+    if((cpu->F & FLAG_Z))
+    {
+        cpu->PC = address;
+    }
+}
+
+void jp_c_a16(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t address = (fetch(cpu,memory)) | (fetch(cpu,memory) << 8);
+    if((cpu->F & FLAG_C))
+    {
+        cpu->PC = address;
+    }
+}
+
+void jp_nc_a16(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t address = (fetch(cpu,memory)) | (fetch(cpu,memory) << 8);
+    if(!(cpu->F & FLAG_C))
+    {
+        cpu->PC = address;
+    }
+}
+
+//====================
+//CALLS / RETURNS
+//====================
 void call_a16(struct CPU *cpu, uint8_t memory[])
 {
     uint16_t value = fetch(cpu,memory);
@@ -260,6 +319,9 @@ void ret(struct CPU *cpu, uint8_t memory[])
     cpu->PC = pop_16(cpu,memory);
 }
 
+//====================
+//16-BIT ARITHMATICS
+//====================
 void inc_bc(struct CPU *cpu)
 {
     uint16_t bc = get_bc(cpu);
@@ -274,6 +336,55 @@ void dec_bc(struct CPU *cpu)
     set_bc(cpu, bc);
 }
 
+void add_hl_r16(struct CPU *cpu, uint16_t value)
+{
+    uint16_t hl = (cpu->H << 8) | cpu->L;
+    uint32_t result = hl + value;
+    cpu->F &= ~FLAG_N;
+    if((hl & 0x0FFF) + (value & 0x0FFF) > 0x0FFF)
+    {
+        cpu->F |= FLAG_H;
+    }
+    else
+    {
+        cpu->F &= ~FLAG_H;
+    }
+    if(result > 0xFFFF)
+    {
+        cpu->F |= FLAG_C;
+    }
+    else
+    {
+        cpu->F &= ~FLAG_C;
+    }
+    cpu->H = result >> 8;
+    cpu->L = result;
+}
+
+void add_hl_bc(struct CPU *cpu)
+{
+    add_hl_r16(cpu,get_bc(cpu));
+}
+
+void add_hl_de(struct CPU *cpu)
+{
+    add_hl_r16(cpu,(cpu->D << 8) | cpu->E);
+}
+
+void add_hl_hl(struct CPU *cpu)
+{
+    add_hl_r16(cpu,(cpu->H << 8) | cpu->L);
+}
+
+void add_hl_sp(struct CPU *cpu)
+{
+    add_hl_r16(cpu,cpu->SP);
+}
+
+//====================
+//MAIN / TEST
+//====================
+
 int main(void)
 {
     struct CPU cpu = {0};
@@ -283,7 +394,8 @@ int main(void)
     cpu.A = 42;
     cpu.PC = 0x0150;
     cpu.SP = 0xFFFE;
-    uint8_t program[] = {
+    uint8_t program[] =
+    {
         0x01, 0x34, 0x12,  // LD BC, 0x1234
         0x3E, 0x42,        // LD A, 0x42
         //0x3C,              // INC A
@@ -301,7 +413,10 @@ int main(void)
         0xF1,              // pop af
         0x03,              // inc bc
         0x0B,              // dec bc
-
+        0x09,              // add hl, bc
+        0x19,              // add hl, de
+        0x29,              // add hl, hl
+        0x39,              // add hl, sp
     };
 
     for (int i = 0; i < sizeof(program); i++)
@@ -311,78 +426,101 @@ int main(void)
 
     printf("PC     = 0x%04X\n", cpu.PC);
 
-    while(cpu.PC < 0x0150 + sizeof(program)){
-         uint8_t opcode = fetch(&cpu, memory);
-         printf("Opcode = 0x%02X\n", opcode);
-         switch (opcode)
+    while(cpu.PC < 0x0150 + sizeof(program))
+    {
+        uint8_t opcode = fetch(&cpu, memory);
+        printf("Opcode = 0x%02X\n", opcode);
+        //====================
+//DECODER
+//====================
+        switch (opcode)
         {
-            case 0x00:
-                break;
+        case 0x00:
+            break;
 
-            case 0x01:
-                ld_bc_nn(&cpu,memory);
-                break;
+        case 0x01:
+            ld_bc_nn(&cpu,memory);
+            break;
 
-            case 0x3E:
-                ld_a_n(&cpu,memory);
-                printf("A      = 0x%02X\n", cpu.A);
-                printf("PC     = 0x%04X\n", cpu.PC);
-                break;
+        case 0x3E:
+            ld_a_n(&cpu,memory);
+            printf("A      = 0x%02X\n", cpu.A);
+            printf("PC     = 0x%04X\n", cpu.PC);
+            break;
 
-            case 0x3C:
-                inc_a(&cpu);
-                printf("A      = 0x%02X\n", cpu.A);
-                printf("PC     = 0x%04X\n", cpu.PC);
-                break;
-            case 0xFE:
-                cp_a_n(&cpu,memory);
-                printf("A = 0x%02X, F = 0x%02X, PC = 0x%04X\n",
-                    cpu.A, cpu.F, cpu.PC);
-                break;
-            case 0x28:
-                jr_z_r8(&cpu, memory);
-                printf("After JR: PC = 0x%04X\n", cpu.PC);
-                break;
-            case 0x06:
-                ld_b_n(&cpu,memory);
-                break;
-            case 0x20:
-                jr_nz_r8(&cpu, memory);
-                break;
-            case 0xC5:
-                push_bc(&cpu,memory);
-                break;
-            case 0xC1:
-                pop_bc(&cpu,memory);
-                break;
-            case 0xD5:
-                push_de(&cpu,memory);
-                break;
-            case 0xD1:
-                pop_de(&cpu,memory);
-                break;
-            case 0xE5:
-                push_hl(&cpu,memory);
-                break;
-            case 0xE1:
-                pop_hl(&cpu,memory);
-                break;
-            case 0xF5:
-                push_af(&cpu,memory);
-                break;
-            case 0xF1:
-                pop_af(&cpu,memory);
-                break;
-            case 0x03:
-                inc_bc(&cpu);
-                break;
-            case 0x0B:
-                dec_bc(&cpu);
-                break;
-            default:
-                printf("Unknown opcode: 0x%02X\n", opcode);
-                break;
+        case 0x3C:
+            inc_a(&cpu);
+            printf("A      = 0x%02X\n", cpu.A);
+            printf("PC     = 0x%04X\n", cpu.PC);
+            break;
+        case 0xFE:
+            cp_a_n(&cpu,memory);
+            printf("A = 0x%02X, F = 0x%02X, PC = 0x%04X\n",
+                   cpu.A, cpu.F, cpu.PC);
+            break;
+        case 0x28:
+            jr_z_r8(&cpu, memory);
+            printf("After JR: PC = 0x%04X\n", cpu.PC);
+            break;
+        case 0x06:
+            ld_b_n(&cpu,memory);
+            break;
+        case 0x20:
+            jr_nz_r8(&cpu, memory);
+            break;
+        case 0xC5:
+            push_bc(&cpu,memory);
+            break;
+        case 0xC1:
+            pop_bc(&cpu,memory);
+            break;
+        case 0xD5:
+            push_de(&cpu,memory);
+            break;
+        case 0xD1:
+            pop_de(&cpu,memory);
+            break;
+        case 0xE5:
+            push_hl(&cpu,memory);
+            break;
+        case 0xE1:
+            pop_hl(&cpu,memory);
+            break;
+        case 0xF5:
+            push_af(&cpu,memory);
+            break;
+        case 0xF1:
+            pop_af(&cpu,memory);
+            break;
+        case 0x03:
+            inc_bc(&cpu);
+            break;
+        case 0x0B:
+            dec_bc(&cpu);
+            break;
+        case 0x09:
+            add_hl_bc(&cpu);
+            break;
+        case 0x19:
+            add_hl_de(&cpu);
+            break;
+        case 0x29:
+            add_hl_hl(&cpu);
+            break;
+        case 0x39:
+            add_hl_sp(&cpu);
+            break;
+        case 0xCD:
+            call_a16(&cpu,memory);
+            break;
+        case 0xC9:
+            ret(&cpu,memory);
+            break;
+        default:
+            printf("Unknown opcode: 0x%02X\n", opcode);
+            break;
         }
+
     }
     printf("-----------------\n");
     printf("A  = 0x%02X\n", cpu.A);
