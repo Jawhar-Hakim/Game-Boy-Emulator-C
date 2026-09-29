@@ -180,6 +180,91 @@ void ld_sp_nn(struct CPU *cpu, uint8_t memory[])
     cpu->SP = ((uint16_t)high << 8) | low;
 }
 
+void ld_sp_hl(struct CPU *cpu)
+{
+    cpu->SP = ((uint16_t)cpu->H << 8) | cpu->L;
+}
+
+void ld_bc_a(struct CPU *cpu, uint8_t memory[])
+{
+    // LD (BC), A
+    uint16_t bc = get_bc(cpu);
+    memory[bc] = cpu->A;
+}
+
+void ld_a_bc(struct CPU *cpu, uint8_t memory[])
+{
+    //ld A, (BC)
+    uint16_t bc = get_bc(cpu);
+    cpu->A = memory[bc];
+}
+
+void ld_de_a(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t de = ((uint16_t)cpu->D << 8) | cpu->E;
+    memory[de] = cpu->A;
+}
+
+void ld_a_de(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t de = ((uint16_t)cpu->D << 8) | cpu->E;
+    cpu->A = memory[de];
+}
+
+void ld_hl_a(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t hl = ((uint16_t)cpu->H << 8) | cpu->L;
+    memory[hl] = cpu->A;
+}
+
+void ld_hl_inc_a(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t hl = ((uint16_t)cpu->H << 8) | cpu->L;
+
+    memory[hl] = cpu->A;
+
+    hl++;
+
+    cpu->H = hl >> 8;
+    cpu->L = hl & 0xFF;
+}
+
+void ld_hl_dec_a(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t hl = ((uint16_t)cpu->H << 8) | cpu->L;
+
+    memory[hl] = cpu->A;
+
+    hl--;
+
+    cpu->H = hl >> 8;
+    cpu->L = hl & 0xFF;
+}
+
+void ld_a_hl(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t hl = ((uint16_t)cpu->H << 8) | cpu->L;
+    cpu->A = memory[hl];
+}
+
+void ld_a_hl_inc(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t hl = ((uint16_t)cpu->H << 8) | cpu->L;
+    cpu->A = memory[hl];
+    hl++;
+    cpu->H = hl >> 8;
+    cpu->L = hl & 0xFF;
+}
+
+void ld_a_hl_dec(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t hl = ((uint16_t)cpu->H << 8) | cpu->L;
+    cpu->A = memory[hl];
+    hl--;
+    cpu->H = hl >> 8;
+    cpu->L = hl & 0xFF;
+}
+
 //====================
 //8-BIT ARITHMATIC
 //====================
@@ -479,6 +564,42 @@ int main(void)
             printf("PC     = 0x%04X\n", cpu.PC);
             break;
 
+        case 0xF9:
+            ld_sp_hl(&cpu);
+            break;
+
+        case 0x06:
+            ld_b_n(&cpu,memory);
+            break;
+
+        case 0x02:
+            ld_bc_a(&cpu,memory);
+            break;
+
+        case 0x0A:
+            ld_a_bc(&cpu,memory);
+            break;
+
+        case 0x1A:
+            ld_a_de(&cpu,memory);
+            break;
+
+        case 0x12:
+            ld_de_a(&cpu,memory);
+            break;
+
+        case 0x77:
+            ld_hl_a(&cpu,memory);
+            break;
+
+        case 0x22:
+            ld_hl_inc_a(&cpu,memory);
+            break;
+
+        case 0x32:
+            ld_hl_dec_a(&cpu,memory);
+            break;
+
         case 0x3C:
             inc_a(&cpu);
             printf("A      = 0x%02X\n", cpu.A);
@@ -493,9 +614,7 @@ int main(void)
             jr_z_r8(&cpu, memory);
             printf("After JR: PC = 0x%04X\n", cpu.PC);
             break;
-        case 0x06:
-            ld_b_n(&cpu,memory);
-            break;
+
         case 0x20:
             jr_nz_r8(&cpu, memory);
             break;
