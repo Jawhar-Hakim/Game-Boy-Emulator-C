@@ -265,6 +265,48 @@ void ld_a_hl_dec(struct CPU *cpu, uint8_t memory[])
     cpu->L = hl & 0xFF;
 }
 
+void ld_u16_a(struct CPU *cpu, uint8_t memory[])
+{
+    uint8_t low = fetch(cpu,memory);
+    uint8_t high = fetch(cpu,memory);
+    uint16_t u16 = ((uint16_t)high << 8) | low;
+    memory[u16] = cpu->A;
+}
+
+void ld_a_u16(struct CPU *cpu, uint8_t memory[])
+{
+    uint8_t low = fetch(cpu,memory);
+    uint8_t high = fetch(cpu,memory);
+    uint16_t u16 = ((uint16_t)high << 8) | low;
+    cpu->A = memory[u16];
+}
+
+void ld_fpc_a(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t fpc = 0xFF00 | cpu->C;
+    memory[fpc] = cpu->A;
+}
+
+void ld_a_fpc(struct CPU *cpu, uint8_t memory[])
+{
+    uint16_t fpc = 0xFF00 | cpu->C;
+    cpu->A = memory[fpc];
+}
+
+void ld_fpu_a(struct CPU *cpu, uint8_t memory[])
+{
+    uint8_t low = fetch(cpu,memory);
+    uint16_t address = 0xFF00 | low;
+    memory[address] = cpu->A;
+}
+
+void ld_a_fpu(struct CPU *cpu, uint8_t memory[])
+{
+    uint8_t low = fetch(cpu,memory);
+    uint16_t address = 0xFF00 | low;
+    cpu->A = memory[address];
+}
+
 //====================
 //8-BIT ARITHMATIC
 //====================
@@ -498,6 +540,7 @@ int main(void)
     cpu.A = 42;
     cpu.PC = 0x0150;
     cpu.SP = 0xFFFE;
+    /*
     uint8_t program[] =
     {
         0x01, 0x34, 0x12,  // LD BC, 0x1234
@@ -521,6 +564,15 @@ int main(void)
         0x19,              // add hl, de
         0x29,              // add hl, hl
         0x39,              // add hl, sp
+    };
+    */
+    uint8_t program[] = {
+        0x21, 0xFF, 0x12,
+        0x2A,
+        0x3A,
+        0x21, 0xFF, 0xFF,
+        0x2A,
+        0x3A,
     };
 
     for (int i = 0; i < sizeof(program); i++)
@@ -552,6 +604,7 @@ int main(void)
 
         case 0x21:
             ld_hl_nn(&cpu,memory);
+            printf("HL = 0x%04X\n",(cpu.H << 8) | cpu.L);
             break;
 
         case 0x31:
@@ -582,6 +635,40 @@ int main(void)
 
         case 0x1A:
             ld_a_de(&cpu,memory);
+            break;
+
+        case 0x2A:
+            ld_a_hl_inc(&cpu,memory);
+            printf("HL = 0x%04X\n",(cpu.H << 8) | cpu.L);
+            break;
+
+        case 0x3A:
+            ld_a_hl_dec(&cpu,memory);
+            printf("HL = 0x%04X\n",(cpu.H << 8) | cpu.L);
+            break;
+
+        case 0xEA:
+            ld_u16_a(&cpu,memory);
+            break;
+
+        case 0xFA:
+            ld_a_u16(&cpu,memory);
+            break;
+
+        case 0xE2:
+            ld_fpc_a(&cpu,memory);
+            break;
+
+        case 0xF2:
+            ld_a_fpc(&cpu,memory);
+            break;
+
+        case 0xE0:
+            ld_fpu_a(&cpu,memory);
+            break;
+
+        case 0xF0:
+            ld_a_fpu(&cpu,memory);
             break;
 
         case 0x12:
