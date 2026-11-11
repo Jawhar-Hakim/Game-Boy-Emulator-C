@@ -153,6 +153,66 @@ void ld_b_n(struct CPU *cpu, uint8_t memory[])
     cpu->B = fetch(cpu,memory);
 }
 
+void ld_c_n(struct CPU *cpu, uint8_t memory[])
+{
+    cpu->C = fetch(cpu,memory);
+}
+
+void ld_d_n(struct CPU *cpu, uint8_t memory[])
+{
+    cpu->D = fetch(cpu, memory);
+}
+
+void ld_e_n(struct CPU *cpu, uint8_t memory[])
+{
+    cpu->E = fetch(cpu, memory);
+}
+
+void ld_h_n(struct CPU *cpu, uint8_t memory[])
+{
+    cpu->H = fetch(cpu, memory);
+}
+
+void ld_l_n(struct CPU *cpu, uint8_t memory[])
+{
+    cpu->L = fetch(cpu, memory);
+}
+
+void ld_a_a(struct CPU *cpu)
+{
+    cpu->A = cpu->A;
+}
+
+void ld_a_b(struct CPU *cpu)
+{
+    cpu->A = cpu->B;
+}
+
+void ld_a_c(struct CPU *cpu)
+{
+    cpu->A = cpu->C;
+}
+
+void ld_a_d(struct CPU *cpu)
+{
+    cpu->A = cpu->D;
+}
+
+void ld_a_e(struct CPU *cpu)
+{
+    cpu->A = cpu->E;
+}
+
+void ld_a_h(struct CPU *cpu)
+{
+    cpu->A = cpu->H;
+}
+
+void ld_a_l(struct CPU *cpu)
+{
+    cpu->A = cpu->L;
+}
+
 void ld_bc_nn(struct CPU *cpu, uint8_t memory[])
 {
     uint8_t low = fetch(cpu, memory);
